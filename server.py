@@ -1,6 +1,6 @@
 import socket
 import threading
-#from Channel import *
+from Channel import *
 
 class ClientConn:
     def __init__(self, client, addr, uname):
@@ -55,8 +55,7 @@ class Server:
 
         self.clients = {}
         self.conn_users = {}
-        #self.channels = Channels() 
-        self.channels = None
+        self.channels = MsgCol() 
 
         self.clients_lock = threading.Lock()
         self.conn_users_lock = threading.Lock()
@@ -161,24 +160,28 @@ class Server:
                 client_conn = self.get_client(client)
                 authd = client_conn != None
 
+                succ = True
+                resp = "" 
                 if msg.startswith("CC"):
-                    okmsg=f"{CHANNELS.createChannel(payload)}"
-                    self.send_msg("OK", okmsg, client)
-
-                elif msg.startswith("CD"):
-                    CHANNELS.deleteChannel(payload)
-                    print(CHANNELS.getChannels())
-                    okmsg=f"channel {payload} deleted"
-                    self.send_msg("OK", okmsg, client)
-
-                elif msg.startswith("CL"):
-                    CHANNELS.getChannels()
-                    okmsg=f"Channels list: {CHANNELS.getChannels()}"
-                    self.send_msg("OK", okmsg, client)
+                    succ, resp = self.channels.createChannel(payload)
                     
+                elif msg.startswith("CD"):
+                    succ, resp = self.channels.deleteCol(payload)
+ 
+                elif msg.startswith("CL"):
+                    resp = self.channels.getMsgCol()
+
                 elif msg.startswith("CS"):    
-                    okmsg=f"{CHANNELS.subscribeChannel(payload,client.uname)}"
-    
+                    succ, resp = self.channels.subscribeChannel(payload,client.uname)
+
+                else:
+                    succ = False
+                    resp = f"Invalid verb {msg[:2]}"
+                
+                if succ:
+                    self.send_msg("OK", resp, client)
+                else:
+                    self.send_msg("ER", resp, client)
 
     def start_mom(self):
         self.server.listen()

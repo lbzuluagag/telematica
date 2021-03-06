@@ -175,10 +175,10 @@ class MsgCol:
         """
         try:
            self.getMsgCol().index(col)
-           return "The col {{col}} already exist"
+           return False, "The col {{col}} already exist"
         except :
             self.cols.append(Channel(col))
-            return "Col created succesfully"
+            return True, "Col created succesfully"
 
     def createQueue(self,col):
         """
@@ -186,10 +186,10 @@ class MsgCol:
         """
         try:
            self.getMsgCol().index(col)
-           return "The col {{channel}} already exist"
+           return False, "The col {{channel}} already exist"
         except :
             self.cols.append(Queue(col))
-            return "Col created succesfully"
+            return True, "Col created succesfully"
 
 
     def deleteCol(self,col):
@@ -200,9 +200,9 @@ class MsgCol:
         try:
            self.getMsgCol().index(col)
            del self.cols[self.getMsgCol().index(col)]
-           return "Col deleted"
+           return True, "Col deleted"
         except :
-            return "The col {{col}} does not exist"
+            return False, "The col {{col}} does not exist"
 
 
     def subscribeCol(self,col,user):
@@ -215,9 +215,9 @@ class MsgCol:
 
         if user not in users:
             self.getCol(col).addUser(user)
-            return "{user} subscribed to the {col}"
+            return True, "{user} subscribed to the {col}"
         else:
-            return "{user} already subscribed to the {col}"
+            return False, "{user} already subscribed to the {col}"
 
 
     def connectCol(self,col,user):
