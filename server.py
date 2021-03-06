@@ -1,10 +1,10 @@
 import socket
 import threading
-from Channel import *
+#from Channel import *
 
 class ClientConn:
-    def __init__(self, conn, addr, uname):
-        self.conn = conn
+    def __init__(self, client, addr, uname):
+        self.client = client
         self.addr = addr
         self.uname = uname
 
@@ -45,17 +45,18 @@ class Server:
         self.PORT = 5051
         #get IP
         self.SERVER = socket.gethostbyname(socket.gethostname()) 
-        self.ADDR = (SERVER, PORT)
+        self.ADDR = (self.SERVER, self.PORT)
         self.FORMAT = 'utf-8'
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind(ADDR)
+        self.server.bind(self.ADDR)
         # ----------------------------------------------------------
         self.VERBS = {"ER", "OK"}
 
         self.clients = {}
         self.conn_users = {}
-        self.channels = Channels() 
+        #self.channels = Channels() 
+        self.channels = None
 
         self.clients_lock = threading.Lock()
         self.conn_users_lock = threading.Lock()
@@ -95,9 +96,9 @@ class Server:
     
     
     def send_msg(self, verb, msg, conn):
-        if verb in self.verbs:
-            msg = verb+msg
-            conn.send(msg.encode(FORMAT))
+        if verb in self.VERBS:
+            self.msg = verb+msg
+            conn.send(msg.encode(self.FORMAT))
 
 
     def rem_client(self, client):
@@ -135,10 +136,14 @@ class Server:
     def mom(self, client, addr):
         print("--------------")
         while True: 
+            msg = None
             try:
-                msg=client.recv(HEADER).decode(FORMAT)
-            except:
-                pass
+                msg=client.recv(self.HEADER).decode(self.FORMAT)
+            except: 
+                print("error recieving from client")
+                self.rem_client(client)
+                return 1
+                
             #el mensaje sin el comando
             payload=msg[2:]
             
@@ -147,44 +152,46 @@ class Server:
                 if succ:
                     new_client = ClientConn(client, addr, payload)
                     self.add_client(new_client)
-                    send_ok(remsg, client)
+                    self.send_msg("OK", resmsg, client)
                 else:
-                    rem_client(client)
+                    print(resmsg)
+                    self.send_msg("ER", resmsg, client)
             
             else:
-                client_conn = get_client(client)
+                client_conn = self.get_client(client)
                 authd = client_conn != None
 
                 if msg.startswith("CC"):
                     okmsg=f"{CHANNELS.createChannel(payload)}"
-                    send_ok(okmsg, client)
+                    self.send_msg("OK", okmsg, client)
 
                 elif msg.startswith("CD"):
                     CHANNELS.deleteChannel(payload)
                     print(CHANNELS.getChannels())
                     okmsg=f"channel {payload} deleted"
-                    send_ok(okmsg, client)
+                    self.send_msg("OK", okmsg, client)
 
                 elif msg.startswith("CL"):
                     CHANNELS.getChannels()
                     okmsg=f"Channels list: {CHANNELS.getChannels()}"
-                    send_ok(okmsg,client)
+                    self.send_msg("OK", okmsg, client)
                     
                 elif msg.startswith("CS"):    
                     okmsg=f"{CHANNELS.subscribeChannel(payload,client.uname)}"
     
 
     def start_mom(self):
-        server.listen()
-        print(f"[LISTENING] Server is listening on {SERVER}")
+        self.server.listen()
+        print(f"[LISTENING] Server is listening on {self.SERVER}")
         while True:
-            conn, addr = server.accept()
+            conn, addr = self.server.accept()
             print(f"Connected with {str(addr)}")
-            thread = threading.Thread(target=mom, args=(conn, addr))
+            thread = threading.Thread(target=self.mom, args=(conn, addr))
             thread.start()
             print(f"[ACTIVE CONNECTIONS] {threading.active_count }")
 
 
 #inicia el servidor
 print("Starting server...")
-start_mom()
+srvr = Server()
+srvr.start_mom()
