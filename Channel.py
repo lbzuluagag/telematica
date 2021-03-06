@@ -133,6 +133,11 @@ class Queue:
         """
         self.messages.append(message)
 
+    def getName(self):
+        """
+        Retorna una lista con los nombres de los usuarios en strings
+        """
+        return self.name
 
 
 class MsgCol:
@@ -146,7 +151,7 @@ class MsgCol:
 
     def getMsgCol(self):
         """
-        Retorna una cadena con los nombres de los canales
+        Retorna una cadena con los nombres de los canales/queues
         """
         cols=[]
         for x in self.cols:
@@ -161,7 +166,7 @@ class MsgCol:
            self.getMsgCol().index(col)
            return self.cols[self.getMsgCol().index(col)]
         except :
-            return "The col {{channeñ}} does not exist"
+            return "The col {{channel}} does not exist"
 
 
     def createChannel(self,col):
@@ -228,4 +233,7 @@ print(col.getCol("eafit").getNames())
 print("Creando colas")
 queue= MsgCol()
 queue.createQueue("neafit")
+queue.createQueue("andres perro hpta")
+print(queue.getMsgCol())
+print(queue.deleteCol("neafit"))
 print(queue.getMsgCol())

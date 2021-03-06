@@ -7,10 +7,10 @@
 
 # funcionalidades pendientes
 - hacer que la clase channel retorne los mensajes de aceptacion o error
-- QC - queue create
-- QD - queue delete
-- QL - queue list
-- QN - queue name
+- QC - queue create (falta agregarla al server, ya funciona la estructura)
+- QD - queue delete (falta agregarla al server, ya funciona la estructura)
+- QL - queue list (falta agregarla al server, ya funciona la estructura)
+- QN - queue name (conectar a la cola)
 - CN - channel name(conectar canal)
 # TODO
 - asyncio para leer sockets
