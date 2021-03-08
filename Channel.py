@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 class User:
     """
     Clase usuario, cada uno de los usuario individuales con su respectiva lista de messages
@@ -15,9 +17,6 @@ class User:
         Retorna name del usuario
         """
         return self.name
-
-
-
 
 
     def popMessage(self):
@@ -54,57 +53,68 @@ class Channel:
         name -- name del canal
         """
         self.name=name
-        self.usuarios=[]
+        self.conns = {}  # key: name (str) val: userobj
+        self.subbed = {} # key: name (str) val: userobj
 
     
     def getName(self):
         """
         retorna el name del canal
         """
-
-
         return self.name
-
-
-
-    def getUsers(self):
-        """
-        Retorna la lista de usuarios
-        """
-        return self.usuarios
 
 
     def getNames(self):
         """
         Retorna una lista con los nombres de los usuarios en strings
         """
-        names=[]
-        for n in self.usuarios:
-            names.append(n.getName())
-        return names
-
-
+        return list(self.conns.keys()) + list(self.subbed.keys())
     
-    def getUser(self,pos):
-        """
-        Retorna usuario en la posicion pos
-        
-        pos -- Posicion
-        """
 
-
-        return self.usuarios[pos]
-    
-    def addUser(self,name):
+    def addSub(self, name: str):
         """
-        Agrega usuario
+        Agrega usuario subscrito
         
         name -- name del usuario a crear
         """
+        if name in self.conns:
+            return 0, f"{name} already subbed to channel {self.name}"
+        elif name in self.subbed:
+            return 0, f"{name} already subbed to channel {self.name}"
+        else: 
+            self.conns[name]=User(name) 
+            return 1, f"{name} subbed to channel {self.name}"
 
 
-        self.usuarios.append(User(name))
+    def addConn(self, name):
+        """
+        Agrega usuario connectado 
+        
+        name -- name del usuario a crear
+        """
+        if name in self.conns: # return error 
+            return 0, [f"{name} was already connected to channel {self.name}"]
 
+        elif name in self.subbed:
+            # copiar mensajes y enviarlos
+            usr = self.subbed[name]
+            usr_msgs = deepcopy(user.messages)
+            usr.messages.clear()
+            
+            self.conn[name] = usr
+            del self.subbed[name]
+
+            return 1, usr_msgs
+
+        else:
+            self.conns[name] = User(name)
+            return 2, [f"{name} connected succesfully to {self.name}"]
+
+    def getConn(self,name):
+        if name in self.conns:
+            return True
+        else:
+            return False
 
 class Queue:
 
@@ -138,102 +148,3 @@ class Queue:
         Retorna una lista con los nombres de los usuarios en strings
         """
         return self.name
-
-
-class MsgCol:
-    """
-    Clase MsgCol, esta seria en la que estaria toda la informacion de los cols.
-    Esta clase contiene la lista de todos los cols, cada uno con su respectiva informacion
-    """
-    def __init__(self):
-        self.cols=[]
-
-
-    def getMsgCol(self):
-        """
-        Retorna una cadena con los nombres de los canales/queues
-        """
-        cols=[]
-        for x in self.cols:
-            cols.append(x.getName())
-        return cols
-
-    def getCol(self,col):
-        """
-        Retorna el canal deseado si este existe, de lo contrario retorna un mensaje
-        """
-        try:
-           self.getMsgCol().index(col)
-           return self.cols[self.getMsgCol().index(col)]
-        except :
-            return "The col {{channel}} does not exist"
-
-
-    def createChannel(self,col):
-        """
-        Busca si el canal que se desea crear existe, de no existir este canal es creado
-        """
-        try:
-           self.getMsgCol().index(col)
-           return False, "The col {{col}} already exist"
-        except :
-            self.cols.append(Channel(col))
-            return True, "Col created succesfully"
-
-    def createQueue(self,col):
-        """
-        Busca si el canal que se desea crear existe, de no existir este canal es creado
-        """
-        try:
-           self.getMsgCol().index(col)
-           return False, "The col {{channel}} already exist"
-        except :
-            self.cols.append(Queue(col))
-            return True, "Col created succesfully"
-
-
-    def deleteCol(self,col):
-        """
-        Busca si el canal que se desea borrar existe, de no existir este metodo
-        retornara un mensaje
-        """
-        try:
-           self.getMsgCol().index(col)
-           del self.cols[self.getMsgCol().index(col)]
-           return True, "Col deleted"
-        except :
-            return False, "The col {{col}} does not exist"
-
-
-    def subscribeCol(self,col,user):
-        """
-        Conecta el usuario con el canal deseado, en caso de estar ya estar conectado, se le notificara al usuario
-        col -- nombre de canal al cual se desea conectar
-        user -- usuario que se va a conectar al canal
-        """
-        users = self.getCol(col).getNames()
-
-        if user not in users:
-            self.getCol(col).addUser(user)
-            return True, "{user} subscribed to the {col}"
-        else:
-            return False, "{user} already subscribed to the {col}"
-
-
-    def connectCol(self,col,user):
-        pass
-
-
-
-col = MsgCol()
-col.createChannel("eafit")
-print(col.subscribeCol("eafit","luis"))
-print(col.subscribeCol("eafit","luis"))
-print(col.getCol("eafit").getNames())
-print("Creando colas")
-queue= MsgCol()
-queue.createQueue("neafit")
-queue.createQueue("andres perro hpta")
-print(queue.getMsgCol())
-print(queue.deleteCol("neafit"))
-print(queue.getMsgCol())
