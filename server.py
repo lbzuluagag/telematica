@@ -93,26 +93,32 @@ class Server:
             del self.clients[client]
 
 
-    def get_channel(self, chan_name):
+    def get_channel(self, chan_name, client):
         self.channels_lock.acquire()
 
-        if payload in self.channels:
-            return self.channels[payload]         
+        if chan_name in self.channels:
+            self.channels_lock.release()
+            #claramente no estafuncionando esto o el metodo en la clase channel
+            self.channels[chan_name].addSub(self.clients[client])
+            return self.channels[chan_name]         
         
-        return None
         self.channels_lock.release()
+        return None
+        
 
 
     def add_channel(self, chan_name):
         self.channels_lock.acquire()
 
         if chan_name in self.channels:
+            self.channels_lock.release()
             return False, f"Channel {chan_name} already exists"
         else:
-            self.channels[payload] = Channel(payload)
-            return True, f"Channel {payload} created succesfully"   
+            self.channels[chan_name] = Channel(chan_name)
+            self.channels_lock.release()
+            return True, f"Channel {chan_name} created succesfully"   
+
         
-        self.channels_lock.release()
 
 
     def del_client(self, chan_name):
@@ -126,6 +132,7 @@ class Server:
             resp = f"Channel {payload} does not exists"
 
         self.channels_lock.release()
+        return resp
 
 
     def get_uname(self, uname):
@@ -181,7 +188,7 @@ class Server:
                 return 1
                 
             #el mensaje sin el comando
-            payload=msg[2:]
+            payload=msg[3:]
             
             if msg.startswith("AUT"):
                 succ, resmsg = self.auth_user(payload, client)
@@ -208,7 +215,7 @@ class Server:
                     resp = list(self.channels.keys())
 
                 elif msg.startswith("CSU"): #CHANNEL SUB                    
-                    channel = self.get_channel(payload)
+                    channel = self.get_channel(payload,client)
                     
                 elif msg.startswith("CRE"): #CHANNEL RECIEVE (MSG)
                     #tengo que usar el metodo getConn para
