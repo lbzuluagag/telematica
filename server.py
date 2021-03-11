@@ -51,11 +51,11 @@ class Server:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.ADDR)
         # ----------------------------------------------------------
-        self.VERBS = {"ER", "OK"}
+        self.VERBS = {"ERR", "OKO"}
 
-        self.clients = {}
-        self.conn_users = {}
-        self.channels = {} 
+        self.clients = {} #k: connection, v: ClientConn
+        self.conn_users = {} #k: str (uname), v: connection (socket)
+        self.channels = {} # k: str, v: Channel
 
         self.clients_lock = threading.Lock()
         self.conn_users_lock = threading.Lock()
@@ -93,13 +93,11 @@ class Server:
             del self.clients[client]
 
 
-    def get_channel(self, chan_name, client):
+    def get_channel(self, chan_name):
         self.channels_lock.acquire()
 
         if chan_name in self.channels:
             self.channels_lock.release()
-            #claramente no estafuncionando esto o el metodo en la clase channel
-            self.channels[chan_name].addSub(self.clients[client])
             return self.channels[chan_name]         
         
         self.channels_lock.release()
@@ -121,7 +119,7 @@ class Server:
         
 
 
-    def del_client(self, chan_name):
+    def rem_channel(self, chan_name):
         self.channels_lock.acquire()
 
         if payload in self.channels:
@@ -147,10 +145,12 @@ class Server:
     
     
     def send_msg(self, verb, msg, conn):
+        verb = verb.strip()
         if verb in self.VERBS:
             msg = verb+str(msg)
             conn.send(msg.encode(self.FORMAT))
 
+    
     #---------------------------------------------------------------
 
     def auth_user(self, usern, client):
@@ -195,19 +195,21 @@ class Server:
                 if succ:
                     new_client = ClientConn(client, addr, payload)
                     self.add_client(new_client)
-                    self.send_msg("OK", resmsg, client)
+                    self.send_msg("OKO", resmsg, client)
                 else:
-                    self.send_msg("ER", resmsg, client)
+                    self.send_msg("ERR", resmsg, client)
             
             else:
                 client_conn = self.get_client(client)
-                authd = client_conn != None
-
+                                
                 succ = True
-                resp = "" 
-                if msg.startswith("CCR"): #CHANNEL CREATE
+                resp = ""
+                if  client_conn == None:
+                    succ, resp = (False, "Not logged in")
+
+                elif msg.startswith("CCR"): #CHANNEL CREATE
                     succ, resp = self.add_channel(payload)
-                    
+
                 elif msg.startswith("CDE"): #CHANNEL DELETE
                     succ, resp = self.del_channel(payload)
 
@@ -215,25 +217,37 @@ class Server:
                     resp = list(self.channels.keys())
 
                 elif msg.startswith("CSU"): #CHANNEL SUB                    
-                    channel = self.get_channel(payload,client)
-                    
-                elif msg.startswith("CRE"): #CHANNEL RECIEVE (MSG)
-                    #tengo que usar el metodo getConn para
-                    #ver si esta conectado al grupo
-                    #dependiendo de esto se envia el mensaje al grupo
-                    #o se le notofica al usuario que no esta conectado
-                    channel = msg[3:msg.find(" ")]
-                    msg= msg[msg.find(" "):]
-                    
-                else:
-                    succ = False
-                    resp = f"Invalid verb {msg[:2]}"
+                    channel = self.get_channel(payload)
+                    if channel != None: 
+                        succ, resp = channel.addSub(client_conn.uname)
+                    else:
+                        succ, resp = (False, f"Channel {payload} does not exist")
                 
-                if succ:
-                    self.send_msg("OK", resp, client)
-                else:
+                elif msg.startswith("CCO"): #CHANNEL CON                    
+                    channel = self.get_channel(payload)
+                    if channel != None: 
+                        succ, resp = channel.addConn(client_conn.uname)
+                        print(channel.conns)
+                    else:
+                        succ, resp = (False, f"Channel {payload} does not exist")
 
-                    self.send_msg("ER", resp, client)
+                elif msg.startswith("CRE"): #CHANNEL RECIEVE (MSG)
+                    startind = msg.find(" ")
+                    channel = msg[3:startind]
+                    msg= msg[startind:]
+
+                    
+
+
+                    
+                else:
+                    succ, resp = (False, f"Invalid verb {msg[:2]}")
+                
+              
+                if succ:
+                    self.send_msg("OKO", resp, client)
+                else:
+                    self.send_msg("ERR", resp, client)
 
     def start_mom(self):
         self.server.listen()

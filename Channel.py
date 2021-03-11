@@ -78,12 +78,12 @@ class Channel:
         name -- name del usuario a crear
         """
         if name in self.conns:
-            return 0, f"{name} already subbed to channel {self.name}"
+            return False, f"{name} connected to channel {self.name}"
         elif name in self.subbed:
-            return 0, f"{name} already subbed to channel {self.name}"
+            return False, f"{name} already subbed to channel {self.name}"
         else: 
-            self.conns[name]=User(name) 
-            return 1, f"{name} subbed to channel {self.name}"
+            self.subbed[name]=User(name) 
+            return True, f"{name} subbed to channel {self.name}"
 
 
     def addConn(self, name):
@@ -98,10 +98,10 @@ class Channel:
         elif name in self.subbed:
             # copiar mensajes y enviarlos
             usr = self.subbed[name]
-            usr_msgs = deepcopy(user.messages)
+            usr_msgs = deepcopy(usr.messages)
             usr.messages.clear()
             
-            self.conn[name] = usr
+            self.conns[name] = usr
             del self.subbed[name]
 
             return 1, usr_msgs
