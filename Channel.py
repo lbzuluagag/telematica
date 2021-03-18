@@ -85,7 +85,19 @@ class Channel:
             self.subbed[name]=User(name) 
             return True, f"{name} subbed to channel {self.name}"
 
+    def storeMsg(self, msg): # esta bien juan fe lindo mua
+        for sub in self.subbed.values():
+            sub.messages.append(msg)
 
+        return self.conns.keys()
+
+    def getSubbdMsg(self, usern):
+        if usern in self.subbed.keys():
+            msg=subbed[usern].messages
+            subbed[usern].messages = []
+            return msg
+
+        
     def addConn(self, name):
         """
         Agrega usuario connectado 

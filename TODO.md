@@ -12,6 +12,8 @@
 - QLI - queue list (falta agregarla al server, ya funciona la estructura)
 - tenemos que eliminar la coneccion(el socket) cuando una persona se desconecte y eliminar el username de la lista de conectados
 - CRE - sintaxis CREchannel message
+- CSE - enviar mensajes en cola del usuario
+- MSG - indica un mensaje del servidor 
 # TODO
 - asyncio para leer sockets
 - check IP clientes

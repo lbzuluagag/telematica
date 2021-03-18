@@ -17,11 +17,7 @@ def receive():
         try:
             #recibe un mensaje del servidor
             msg = client.recv(HEADER).decode(FORMAT)
-            #dependiendo de que mensaje reciba, hace algo
-            if msg =="nickname":
-                client.send(nickname.encode(FORMAT))
-            elif len(msg)>1:
-                print(msg)
+            print(msg)
         except:
             print("An error ocurred!")
             client.close()
@@ -33,13 +29,11 @@ def write():
     while True:
         msg = f"{input()}"
         client.send(msg.encode(FORMAT))
-        res = client.recv(HEADER).decode(FORMAT)
-        print(res)
 
 #iniciamos los hilos
 #este primer hilo es para que este pendiente del metodo receive
-#receive_thread = threading.Thread(target=receive)
-#receive_thread.start()
+receive_thread = threading.Thread(target=receive)
+receive_thread.start()
 
 #Este hilo solo se preocupa de el metodo write
 write_thread = threading.Thread(target=write)

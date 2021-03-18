@@ -52,7 +52,7 @@ class Server:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.ADDR)
         # ----------------------------------------------------------
-        self.VERBS = {"ERR", "OKO"}
+        self.VERBS = {"ERR", "OKO", "MSG"}
 
         self.clients = {} #k: connection, v: ClientConn
         self.conn_users = {} #k: str (uname), v: connection (socket)
@@ -246,15 +246,33 @@ class Server:
 
                 elif msg.startswith("CRE"): #CHANNEL RECIEVE (MSG)
                     startind = msg.find(" ")
-                    channel = msg[3:startind]
-                    msg= msg[startind:]
+                    channel_name = msg[3:startind]
+                    msg = msg[startind:]
 
+                    channel = self.get_channel(channel_name)
+                    conn_users = channel.storeMsg(msg)
+
+                    msg = channel_name + " " + msg
+                    for usern in conn_users:
+                        print("usuario ",usern)
+                        tmp_client_conn = self.get_uname(usern)
+                        self.send_msg("MSG", msg, tmp_client_conn) 
                     
+                    succ, resp = (True, "Succesfully sent message")
+                
+                elif msg.startswith("CSE"):
+                    startind = msg.find(" ")
+                    channel = self.get_channel(payload)
+                    msgs_tosend = channel.getSubbdMsg(client_conn.uname)
 
+                    for nxt_msg in msgs_tosend:
+                        nxt_msg = channel_name + " " + nxt_msg
+                        self.send_msg("MSG", nxt_msg, client)
 
+                    succ, resp = (True, "All messags recieved")
                     
                 else:
-                    succ, resp = (False, f"Invalid verb {msg[:2]}")
+                    succ, resp = (False, f"Invalid verb {msg[:3]}")
                 
               
                 if succ:
