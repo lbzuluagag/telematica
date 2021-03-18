@@ -1,5 +1,5 @@
 # funcionalidades listas
-- AUT - username login
+- AUTusuarioPAScontraseña - username login
 - CCR - channel create
 - CDE - channel delete
 - CLI - channel list

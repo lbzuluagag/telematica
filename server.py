@@ -1,6 +1,7 @@
 import socket
 import threading
 from Channel import *
+import json
 
 class ClientConn:
     def __init__(self, client, addr, uname):
@@ -171,9 +172,20 @@ class Server:
             return (False, errmsg)
 
         else:
-            okmsg = f"user {usern} logged-in!"
-            print(okmsg)
-            return (True, okmsg)
+            f = open("auth.json")
+            auth = json.load(f)
+            auth=auth[0]
+            star_index=usern.index("PAS")
+            user=usern[:star_index]
+            pas=usern[star_index+3:]
+            if auth[user]==pas:
+                okmsg = f"user {user} logged-in!"
+                print(okmsg)
+                return (True, okmsg)
+            else:
+                errmsg=f"user not registred"
+                print(errmsg)
+                return (False, errmsg)
         
 
     def mom(self, client, addr):
@@ -193,6 +205,7 @@ class Server:
             if msg.startswith("AUT"):
                 succ, resmsg = self.auth_user(payload, client)
                 if succ:
+                    payload = payload[:payload.index("PAS")]
                     new_client = ClientConn(client, addr, payload)
                     self.add_client(new_client)
                     self.send_msg("OKO", resmsg, client)
