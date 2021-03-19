@@ -85,17 +85,21 @@ class Channel:
             self.subbed[name]=User(name) 
             return True, f"{name} subbed to channel {self.name}"
 
-    def storeMsg(self, msg): # esta bien juan fe lindo mua
+
+    def storeMsg(self, msg):
         for sub in self.subbed.values():
             sub.messages.append(msg)
 
         return self.conns.keys()
 
+
     def getSubbdMsg(self, usern):
         if usern in self.subbed.keys():
             msg=subbed[usern].messages
             subbed[usern].messages = []
-            return msg
+            return (True, msg)
+        else:
+            return (False, f"User {usern} not subbed")
 
         
     def addConn(self, name):
@@ -129,34 +133,61 @@ class Channel:
             return False
 
 class Queue:
+    """
+    Clase canal, aqui se creara lo que viene siendo cada uno de los cols
+    con su respectiva lista de usuarios
 
+    name -- name del canal a crear
+    """
     def __init__(self,name):
+        """
+        name -- name del canal
+        """
         self.name=name
+        self.conns = set()  # key: name (str) 
         self.messages=[]
-        self.users=[]
         self.index=0
-
-    def popMessage(self):
-        """
-        Retorna el message en la posicion 0, luego lo elimina de la lista
-        """
-
-        if len(self.messages)>0:
-            return self.messages.pop(0)
-        else:
-            return "No messages left"
-
-
-    def pushMessage(self,message):
-        """
-        Agrega un message a la lista de messages
-
-        message -- Message para agregar en la lista
-        """
-        self.messages.append(message)
-
+        
+    
     def getName(self):
+        """
+        retorna el name del canal
+        """
+        return self.name
+
+
+    def getNames(self):
         """
         Retorna una lista con los nombres de los usuarios en strings
         """
-        return self.name
+        return list(self.conns)
+    
+
+
+    def storeMsg(self, msg):
+        self.messages.append(msg)
+
+
+
+
+        
+    def addConn(self, name):
+        """
+        Agrega usuario connectado 
+        
+        name -- name del usuario a crear
+        """
+        if name in self.conns: # return error 
+            return 0, [f"{name} was already connected to Queue {self.name}"]
+
+        else:
+            self.conns[name] = User(name)
+            return 2, [f"{name} connected succesfully to {self.name}"]
+
+
+    def getConn(self,name):
+        if name in self.conns:
+            return True
+        else:
+            return False
+

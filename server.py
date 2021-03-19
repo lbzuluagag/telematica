@@ -36,9 +36,12 @@ def handle(client,addr):
 
 
 
+
+
+
+
 class Server: 
     
-
     def __init__(self):
         # NETWORKING SETUP-------------------------------------------
         #msg length in bytes
@@ -52,7 +55,6 @@ class Server:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.ADDR)
         # ----------------------------------------------------------
-        self.VERBS = {"ERR", "OKO", "MSG"}
 
         self.clients = {} #k: connection, v: ClientConn
         self.conn_users = {} #k: str (uname), v: connection (socket)
@@ -123,6 +125,7 @@ class Server:
     def rem_channel(self, chan_name):
         self.channels_lock.acquire()
 
+        succ, resp = (True, "")
         if payload in self.channels:
             del self.channels[payload]
             resp = f"Channel {payload} deleted succesfully"    
@@ -131,7 +134,7 @@ class Server:
             resp = f"Channel {payload} does not exists"
 
         self.channels_lock.release()
-        return resp
+        return succ, resp
 
 
     def get_uname(self, uname):
@@ -147,9 +150,8 @@ class Server:
     
     def send_msg(self, verb, msg, conn):
         verb = verb.strip()
-        if verb in self.VERBS:
-            msg = verb+str(msg)
-            conn.send(msg.encode(self.FORMAT))
+        msg = verb+str(msg)
+        conn.send(msg.encode(self.FORMAT))
 
     
     #---------------------------------------------------------------
@@ -172,21 +174,25 @@ class Server:
             return (False, errmsg)
 
         else:
-            f = open("auth.json")
-            auth = json.load(f)
-            auth=auth[0]
-            star_index=usern.index("PAS")
-            user=usern[:star_index]
-            pas=usern[star_index+3:]
-            if auth[user]==pas:
-                okmsg = f"user {user} logged-in!"
-                print(okmsg)
-                return (True, okmsg)
-            else:
-                errmsg=f"user not registred"
-                print(errmsg)
-                return (False, errmsg)
-        
+            try:
+                f = open("auth.json")
+                auth = json.load(f)
+                auth=auth[0]
+                star_index=usern.index("PAS")
+                user=usern[:star_index]
+                pas=usern[star_index+3:]
+                if auth[user]==pas:
+                    okmsg = f"user {user} logged-in!"
+                    print(okmsg)
+                    return (True, okmsg)
+                else:
+                    errmsg=f"user not registred"
+                    print(errmsg)
+                    return (False, errmsg)
+            except:
+                    errmsg=f"Something went wrong"
+                    print(errmsg)
+                    return (False, errmsg)
 
     def mom(self, client, addr):
         print("--------------")
@@ -250,26 +256,33 @@ class Server:
                     msg = msg[startind:]
 
                     channel = self.get_channel(channel_name)
-                    conn_users = channel.storeMsg(msg)
+                    if channel != None: 
+                        conn_users = channel.storeMsg(msg)
+                        msg = channel_name + " " + msg
+                        for usern in conn_users:
+                            tmp_client_conn = self.get_uname(usern)
+                            self.send_msg("MSG", msg, tmp_client_conn) 
+                        succ, resp = (True, "Succesfully sent message")
+                    else: 
+                        succ, resp = (False, f"Channel {channel_name} does not exist")
 
-                    msg = channel_name + " " + msg
-                    for usern in conn_users:
-                        print("usuario ",usern)
-                        tmp_client_conn = self.get_uname(usern)
-                        self.send_msg("MSG", msg, tmp_client_conn) 
-                    
-                    succ, resp = (True, "Succesfully sent message")
-                
-                elif msg.startswith("CSE"):
+                elif msg.startswith("CSE"): # usuario pidio mensajes
                     startind = msg.find(" ")
                     channel = self.get_channel(payload)
-                    msgs_tosend = channel.getSubbdMsg(client_conn.uname)
 
-                    for nxt_msg in msgs_tosend:
-                        nxt_msg = channel_name + " " + nxt_msg
-                        self.send_msg("MSG", nxt_msg, client)
+                    if channel != None:
+                        msgs_succ, msgs_tosend = channel.getSubbdMsg(client_conn.uname)
+                        if msgs_succ:
+                            for nxt_msg in msgs_tosend:
+                                nxt_msg = channel_name + " " + nxt_msg
+                                self.send_msg("MSG", nxt_msg, client)
 
-                    succ, resp = (True, "All messags recieved")
+                            succ, resp = (True, "All messags recieved")
+                        else:
+                            succ, resp = (False, f"User {client_conn.uname} is not subbed to {payload}")
+
+                    else:
+                        succ, resp = (False, f"Channel {payload} does not exist")
                     
                 else:
                     succ, resp = (False, f"Invalid verb {msg[:3]}")

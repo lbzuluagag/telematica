@@ -17,3 +17,10 @@
 # TODO
 - asyncio para leer sockets
 - check IP clientes
+
+
+
+#  FILTRADO DE MENSAJES CON KEY
+CREEAFIT KEY: MENSAJE
+
+CSECANAL {EAFIT,UPB}*
