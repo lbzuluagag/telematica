@@ -147,7 +147,6 @@ class Queue:
         self.conns = set()  # key: name (str) 
         self.messages=[]
         self.index=0
-        
     
     def getName(self):
         """
@@ -180,8 +179,8 @@ class Queue:
         if name in self.conns: # return error 
             return 0, [f"{name} was already connected to Queue {self.name}"]
 
-        else:
-            self.conns[name] = User(name)
+        else: 
+            self.conns.add(name)
             return 2, [f"{name} connected succesfully to {self.name}"]
 
 
@@ -191,3 +190,10 @@ class Queue:
         else:
             return False
 
+cola = Queue("eafit")
+print(cola)
+cola.addConn("luisjomosensual")
+cola.addConn("andreshpta")
+cola.storeMsg("holi")
+print(cola.getNames())
+print()
