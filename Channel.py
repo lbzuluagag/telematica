@@ -147,7 +147,7 @@ class Queue:
         self.conns = set()  # key: name (str) 
         self.messages=[]
         self.index=0
-    
+
     def getName(self):
         """
         retorna el name del canal
@@ -167,7 +167,16 @@ class Queue:
         self.messages.append(msg)
 
 
-
+    def getMsg(self):
+        if len(self.messages)>0:
+            user = list(self.conns)[self.index]
+            self.index= self.index+1
+            if self.index >= len(self.conns):
+                self.index = 0 
+            msg = self.messages.pop()
+            return True, msg , user
+        else:
+            return False, "No messages available"
 
         
     def addConn(self, name):
@@ -190,10 +199,16 @@ class Queue:
         else:
             return False
 
-cola = Queue("eafit")
-print(cola)
-cola.addConn("luisjomosensual")
-cola.addConn("andreshpta")
-cola.storeMsg("holi")
-print(cola.getNames())
-print()
+#cola = Queue("eafit")
+#print(cola)
+#cola.addConn("luis")
+#cola.addConn("andreshpta")
+#cola.storeMsg("1")
+#cola.storeMsg("2")
+#cola.storeMsg("holi3")
+#print(cola.getMsg())
+#print(cola.getMsg())
+#print(cola.getMsg())
+#print(cola.getMsg())
+#print(cola.getNames())
+#print()
