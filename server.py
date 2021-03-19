@@ -58,7 +58,7 @@ class Server:
         self.clients = {} #k: connection, v: ClientConn
         self.conn_users = {} #k: str (uname), v: connection (socket)
         self.channels = {} # k: str, v: Channel
-
+        self.queues = {}
         self.clients_lock = threading.Lock()
         self.conn_users_lock = threading.Lock()
         self.channels_lock = threading.Lock()
@@ -118,8 +118,7 @@ class Server:
             self.channels_lock.release()
             return True, f"Channel {chan_name} created succesfully"   
 
-        
-
+      
 
     def rem_channel(self, chan_name):
         self.channels_lock.acquire()
@@ -227,12 +226,20 @@ class Server:
 
                 elif msg.startswith("CCR"): #CHANNEL CREATE
                     succ, resp = self.add_channel(payload)
-
+                    
+                elif msg.startswith("QCR"): #Queue CREATE
+                    self.queues[payload] = Queue(payload)
+    
                 elif msg.startswith("CDE"): #CHANNEL DELETE
                     succ, resp = self.del_channel(payload)
+                elif msg.startswith("QDE"): #CHANNEL DELETE
+                    del self.queues[payload]
 
                 elif msg.startswith("CLI"): #CHANNEL LIST
                     resp = list(self.channels.keys())
+                    
+                elif msg.startswith("QLI"): #CHANNEL LIST
+                    resp = list(self.queues.keys())
 
                 elif msg.startswith("CSU"): #CHANNEL SUB                    
                     channel = self.get_channel(payload)
@@ -282,7 +289,7 @@ class Server:
 
                     else:
                         succ, resp = (False, f"Channel {payload} does not exist")
-                    
+                  
                 else:
                     succ, resp = (False, f"Invalid verb {msg[:3]}")
                 
