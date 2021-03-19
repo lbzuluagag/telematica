@@ -237,7 +237,7 @@ class Server:
 
                 elif msg.startswith("CLI"): #CHANNEL LIST
                     resp = list(self.channels.keys())
-                    
+
                 elif msg.startswith("QLI"): #CHANNEL LIST
                     resp = list(self.queues.keys())
 
