@@ -95,8 +95,8 @@ class Channel:
 
     def getSubbdMsg(self, usern):
         if usern in self.subbed.keys():
-            msg=subbed[usern].messages
-            subbed[usern].messages = []
+            msg=self.subbed[usern].messages
+            self.subbed[usern].messages = []
             return (True, msg)
         else:
             return (False, f"User {usern} not subbed")

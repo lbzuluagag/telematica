@@ -1,306 +1,273 @@
 import socket
 import threading
-from Channel import *
+from Channel import Channel, Queue
 import json
 
 class ClientConn:
-    def __init__(self, client, addr, uname):
+    def __init__(self, client, usern):
         self.client = client
-        self.addr = addr
-        self.uname = uname
-
-
-# metodo para enviar mensaje a todos los usuarios conectados
-# pendiente mas adelante poner que reciba a que sala debe hacer el broadcast
-def broadcast(msg):
-    for client in CLIENTS:
-        client.send(msg)
-
-
-
-def handle(client,addr):
-    while True:
-        #luego voy a probar poner aqui
-        #un if donde dependiendo de que llegue se hace un menu
-        try:
-            msg=client.recv(HEADER)
-            broadcast(msg.encode(FORMAT))
-        except:
-            index = CLIENTS.index(client)
-            CLIENTS.remove(client)
-            client.close()
-            nickname = NICKNAMES[index]
-            broadcast("{} left the chat!".format(nickname).encode(FORMAT))
-            NICKNAMES.remove(nickname)
-            break
-
-
-
-
+        self.usern = usern
 
 
 class Server: 
-    
     def __init__(self):
         # NETWORKING SETUP-------------------------------------------
         #msg length in bytes
         self.HEADER = 1024
         self.PORT = 5051
         #get IP
-        self.SERVER = socket.gethostbyname(socket.gethostname()) 
+        self.SERVER = socket.gethostbyname(socket.gethostname())
         self.ADDR = (self.SERVER, self.PORT)
         self.FORMAT = 'utf-8'
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(self.ADDR)
+
         # ----------------------------------------------------------
-
-        self.clients = {} #k: connection, v: ClientConn
-        self.conn_users = {} #k: str (uname), v: connection (socket)
+        self.clients = {} # k: socket, v: ClientConn 
         self.channels = {} # k: str, v: Channel
-        self.queues = {}
-        self.clients_lock = threading.Lock()
-        self.conn_users_lock = threading.Lock()
-        self.channels_lock = threading.Lock()
+        self.conn_users = {} # k: str(usern), v: socket
+        self.queues = {} # k: str, v: Queue
 
-    
-    # utilidades del servidor---------------------------------------
-    def get_client(self, client):
-        retval = None
-
-        self.clients_lock.acquire()
-        if client in self.clients: 
-            retval =  self.clients[client]
-        self.clients_lock.release()
-
-        return retval 
-
-
-    def add_client(self, client_conn):
-        self.clients_lock.acquire()
-        self.conn_users_lock.acquire()
-
-        self.clients[client_conn.client] = client_conn
-        self.conn_users[client_conn.uname] = client_conn.client
-
-        self.conn_users_lock.release()
-        self.clients_lock.release()
-
-
-    def rem_client(self, client):
-        client.close()
-        client_conn = self.get_client(client) 
-        if client_conn != None:
-            del self.conn_users[client_conn.uname]
-            del self.clients[client]
-
-
-    def get_channel(self, chan_name):
-        self.channels_lock.acquire()
-
-        if chan_name in self.channels:
-            self.channels_lock.release()
-            return self.channels[chan_name]         
-        
-        self.channels_lock.release()
-        return None
-        
-
-
-    def add_channel(self, chan_name):
-        self.channels_lock.acquire()
-
-        if chan_name in self.channels:
-            self.channels_lock.release()
-            return False, f"Channel {chan_name} already exists"
-        else:
-            self.channels[chan_name] = Channel(chan_name)
-            self.channels_lock.release()
-            return True, f"Channel {chan_name} created succesfully"   
-
-      
-
-    def rem_channel(self, chan_name):
-        self.channels_lock.acquire()
-
-        succ, resp = (True, "")
-        if payload in self.channels:
-            del self.channels[payload]
-            resp = f"Channel {payload} deleted succesfully"    
-        else:
-            succ =  False
-            resp = f"Channel {payload} does not exists"
-
-        self.channels_lock.release()
-        return succ, resp
-
-
-    def get_uname(self, uname):
-        retval = None
-
-        self.conn_users_lock.acquire()
-        if uname in self.conn_users:
-            retval = self.conn_users[uname]
-        self.conn_users_lock.release()
-
-        return retval
-    
-    
     def send_msg(self, verb, msg, conn):
         verb = verb.strip()
         msg = verb+str(msg)
         conn.send(msg.encode(self.FORMAT))
-
-    
     #---------------------------------------------------------------
-
-    def auth_user(self, usern, client):
-        client_conn = self.get_client(client)
+    
+    def auth_user(self, payload, client):
+        usern = None
+        passw = None
         
-        if self.get_uname(usern) != None:
+        succ = True
+        resp = ""
+        
+        try:
+            usern, passw = payload.split(' ')
+            print(usern, passw)
+        except:
+            errmsg = """please provide user and password 
+                    separated by a space"""
+            return (False, errmsg)
+
+
+        if usern in self.conn_users:
             # evitar log in a un usuario ya conectado
             # en otro lado 
             errmsg = f"user {usern} already logged-in"
             print(errmsg)
-            return (False, errmsg)
-        
-        elif client_conn != None:
+            succ, resp = (False, errmsg)
+
+        elif client in self.clients: #possible thread err here
             # evitar log in desde una conexion que ya esta
             # logeada con un usuario
-            errmsg = f"this connection is logged-in as {client_conn.uname}"
+            client_conn = self.clients.get(client)
+            errmsg = f"this connection is logged-in as {client_conn.usern}"
             print(errmsg)
-            return (False, errmsg)
+            succ, resp = (False, errmsg)
 
         else:
             try:
                 f = open("auth.json")
                 auth = json.load(f)
-                auth=auth[0]
-                star_index=usern.index("PAS")
-                user=usern[:star_index]
-                pas=usern[star_index+3:]
-                if auth[user]==pas:
-                    okmsg = f"user {user} logged-in!"
+                auth = auth[0]
+                if auth[usern] == passw:
+                    self.clients[client] = ClientConn(client, usern)
+                    self.conn_users[usern] = client   
+
+                    okmsg = f"user {usern} logged-in!"
                     print(okmsg)
-                    return (True, okmsg)
+                    succ, resp = (True, okmsg)
                 else:
                     errmsg=f"user not registred"
                     print(errmsg)
-                    return (False, errmsg)
-            except:
+                    succ, resp = (False, errmsg)
+            except e:
                     errmsg=f"Something went wrong"
-                    print(errmsg)
-                    return (False, errmsg)
+                    print(errmsg, e)
+                    succ, resp = (False, errmsg)
+            
+        return succ, resp
+    
+
+    def create_channel(self, payload):
+        if payload in self.channels:
+            return False, f"Channel {payload} already exists"
+        else:
+            self.channels[payload] = Channel(payload)
+            return True, f"Channel {payload} created succesfully"   
+
+    
+    def create_queue(self, payload):
+        if payload in self.queues:
+            return False, f"Queue {payload} already exists"
+        else:
+            self.queues[payload] = Queue(payload)
+            return True, f"Queue {payload} created succesfully"
+
+    
+    def channel_delete(self, payload):
+        if payload not in self.channels:
+            return False, f"Channel {payload} does not exist"
+        else:
+            del self.channels[payload]
+            return True, f"Channel {payload} deleted succesfully"
+
+
+    def queue_delete(self, payload):
+        if payload not in self.queues:
+            return False, f"Queue {payload} does not exist"
+        else:
+            del self.queues[payload]
+            return True, f"Queue {payload} deleted succesfully"
+    
+
+    def subscribe_channel(self, payload, usern):
+        channel = self.channels.get(payload)
+        succ = True
+        resp = ""
+        if channel != None: 
+            succ, resp = channel.addSub(usern)
+        else:
+            succ, resp = (False, f"Channel {payload} does not exist")
+
+        return succ, resp
+    
+
+    def connect_channel(self, payload, usern):
+        channel = self.channels.get(payload)
+        succ = True
+        resp = ""
+        if channel != None: 
+            succ, resp = channel.addConn(usern)
+            print(channel.conns)
+        else:
+            succ, resp = (False, f"Channel {payload} does not exist")
+
+        return succ, resp 
+
+
+    def connect_queue(self, payload, usern):
+        queue = self.queues.get(payload)
+        succ = True
+        resp = ""
+        if queue != None:
+            succ, resp = queue.addConn(usern)
+            print(queue.conns)
+        else:
+            succ, resp = (False, f"Queue {payload} does not exist")
+        
+        return succ, resp
+
+    
+    def recieve_msg(self, payload):
+        succ = True
+        resp = ""
+        msg = ""
+        try:
+            print(payload)
+            startind = payload.find(" ")
+            channel_name = payload[:startind]
+            msg = payload[startind:]
+        except:
+            errmsg = "Error parsing message"
+            return False, errmsg
+
+        channel = self.channels.get(channel_name)
+        if channel != None: 
+            conn_users = channel.storeMsg(msg)
+            msg = channel_name + " " + msg
+            for usern in conn_users:
+                tmp_client_conn = self.conn_users.get(usern)
+                self.send_msg("MSG", msg, tmp_client_conn) 
+            succ, resp = (True, "Succesfully sent message")
+        else: 
+            succ, resp = (False, f"Channel {channel_name} does not exist")
+         
+
+        return succ, resp
+
+
+    def send_msglist(self, payload, client_conn):
+        channel = self.channels.get(payload)
+        succ, resp = False, ""
+        if channel != None:
+            msgs_succ, msgs_tosend = channel.getSubbdMsg(client_conn.usern)
+            if msgs_succ:
+                for nxt_msg in msgs_tosend:
+                    nxt_msg = channel.name + " " + nxt_msg
+                    self.send_msg("MSG", nxt_msg, client_conn.client)
+
+                succ, resp = (True, "All messags recieved")
+            else:
+                succ, resp = (False, f"User {client_conn.usern} is not subbed to {payload}")
+ 
+        else:
+            succ, resp = (False, f"Channel {payload} does not exist")
+        
+        return succ, resp
+
+    
+    def request_handler(self, verb, payload, client):
+        succ, resp = False, ""
+
+        if verb == "AUT":
+            succ, resp = self.auth_user(payload, client)
+            
+        else:
+            client_conn = self.clients.get(client)
+            if client_conn == None:
+                succ, resp = (False, "Not logged in")
+            else:
+                usern = client_conn.usern
+                request_fns = {
+                       "CCR": lambda: self.create_channel(payload),
+                       "QCR": lambda: self.create_queue(payload),
+                       "CDE": lambda: self.channel_delete(payload),
+                       "QDE": lambda: self.queue_delete(payload),
+                       "CLI": lambda: (True, list(self.channels.keys())),
+                       "QLI": lambda: (True, list(self.queues.keys())),
+                       "CSU": lambda: self.subscribe_channel(payload, usern),
+                       "CCO": lambda: self.connect_channel(payload, usern),
+                       "QCO": lambda: self.connect_queue(payload, usern),
+                       "CRE": lambda: self.recieve_msg(payload),
+                       "CSE": lambda: self.send_msglist(payload, client_conn)
+                }
+        
+                func = request_fns.get(verb);     
+                if func != None:
+                    succ, resp = func()
+                else:
+                    succ, resp = False, "{verb} is not a valid verb"
+        
+        if succ:
+            self.send_msg("OKO", resp, client)
+        else:
+            self.send_msg("ERR", resp, client)
+
+    
 
     def mom(self, client, addr):
         print("--------------")
-        while True: 
-            msg = None
+        while True:      
+            raw_msg = None
             try:
-                msg=client.recv(self.HEADER).decode(self.FORMAT)
+                raw_msg=client.recv(self.HEADER).decode(self.FORMAT)
             except: 
                 print("error recieving from client")
-                self.rem_client(client)
-                return 1
-                
-            #el mensaje sin el comando
-            payload=msg[3:]
-            
-            if msg.startswith("AUT"):
-                succ, resmsg = self.auth_user(payload, client)
-                if succ:
-                    payload = payload[:payload.index("PAS")]
-                    new_client = ClientConn(client, addr, payload)
-                    self.add_client(new_client)
-                    self.send_msg("OKO", resmsg, client)
-                else:
-                    self.send_msg("ERR", resmsg, client)
-            
-            else:
-                client_conn = self.get_client(client)
-                                
-                succ = True
-                resp = ""
-                if  client_conn == None:
-                    succ, resp = (False, "Not logged in")
+                client_conn = self.clients.get(client)
+                if client_conn != None:
+                    del self.conn_users[client_conn.usern]   
+                    del self.clients[client]
+        
+            payload=raw_msg[3:]
+            request_verb = raw_msg[:3].upper()
+            self.request_handler(request_verb, payload, client)                
 
-                elif msg.startswith("CCR"): #CHANNEL CREATE
-                    succ, resp = self.add_channel(payload)
-                    
-                elif msg.startswith("QCR"): #Queue CREATE
-                    self.queues[payload] = Queue(payload)
-    
-                elif msg.startswith("CDE"): #CHANNEL DELETE
-                    succ, resp = self.del_channel(payload)
-                elif msg.startswith("QDE"): #CHANNEL DELETE
-                    del self.queues[payload]
-
-                elif msg.startswith("CLI"): #CHANNEL LIST
-                    resp = list(self.channels.keys())
-
-                elif msg.startswith("QLI"): #CHANNEL LIST
-                    resp = list(self.queues.keys())
-
-                elif msg.startswith("CSU"): #CHANNEL SUB                    
-                    channel = self.get_channel(payload)
-                    if channel != None: 
-                        succ, resp = channel.addSub(client_conn.uname)
-                    else:
-                        succ, resp = (False, f"Channel {payload} does not exist")
-                
-                elif msg.startswith("CCO"): #CHANNEL CON                    
-                    channel = self.get_channel(payload)
-                    if channel != None: 
-                        succ, resp = channel.addConn(client_conn.uname)
-                        print(channel.conns)
-                    else:
-                        succ, resp = (False, f"Channel {payload} does not exist")
-
-                elif msg.startswith("CRE"): #CHANNEL RECIEVE (MSG)
-                    startind = msg.find(" ")
-                    channel_name = msg[3:startind]
-                    msg = msg[startind:]
-
-                    channel = self.get_channel(channel_name)
-                    if channel != None: 
-                        conn_users = channel.storeMsg(msg)
-                        msg = channel_name + " " + msg
-                        for usern in conn_users:
-                            tmp_client_conn = self.get_uname(usern)
-                            self.send_msg("MSG", msg, tmp_client_conn) 
-                        succ, resp = (True, "Succesfully sent message")
-                    else: 
-                        succ, resp = (False, f"Channel {channel_name} does not exist")
-
-                elif msg.startswith("CSE"): # usuario pidio mensajes
-                    startind = msg.find(" ")
-                    channel = self.get_channel(payload)
-
-                    if channel != None:
-                        msgs_succ, msgs_tosend = channel.getSubbdMsg(client_conn.uname)
-                        if msgs_succ:
-                            for nxt_msg in msgs_tosend:
-                                nxt_msg = channel_name + " " + nxt_msg
-                                self.send_msg("MSG", nxt_msg, client)
-
-                            succ, resp = (True, "All messags recieved")
-                        else:
-                            succ, resp = (False, f"User {client_conn.uname} is not subbed to {payload}")
-
-                    else:
-                        succ, resp = (False, f"Channel {payload} does not exist")
-                  
-                else:
-                    succ, resp = (False, f"Invalid verb {msg[:3]}")
-                
-              
-                if succ:
-                    self.send_msg("OKO", resp, client)
-                else:
-                    self.send_msg("ERR", resp, client)
 
     def start_mom(self):
         self.server.listen()
+        
         print(f"[LISTENING] Server is listening on {self.SERVER}")
         while True:
             conn, addr = self.server.accept()
