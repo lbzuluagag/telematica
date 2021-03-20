@@ -10,35 +10,26 @@ class User:
         """
         self.name = name
         self.messages = [] #stores str,set pair
+        self.filters = set()
 
 
-    def getMsgs(self, filters):
+    def setFilters(self, tags):
+        self.filters = set()
+        for t in tags:
+            self.filters.add(t)
+
+
+    def getMsgs(self):
         msgs = []
         for msg, tags in self.messages:
-            for f in filters:
+            for f in self.filters:
                 if f in tags:
                     msgs.append(msg)
                     break
-
-    def getName(self):
-        """
-        Retorna name del usuario
-        """
-        return self.name
+        return msgs
 
 
-    def popMessage(self):
-        """
-        Retorna el message en la posicion 0, luego lo elimina de la lista
-        """
-
-        if len(self.messages)>0:
-            return self.messages.pop(0)
-        else:
-            return "No messages left"
-        
-
-    def pushMsgs(self, message, tags):
+    def pushMsg(self, message, tags):
         """
         Agrega un message a la lista de messages
 
@@ -96,41 +87,46 @@ class Channel:
 
     def storeMsg(self, msg, tags):
         for sub in self.subbed.values():
-            sub.push
-
+            sub.pushMsg(msg, tags)
+            
         return self.conns.keys()
 
 
-    def getSubbdMsg(self, usern):
+    def getSubbdMsg(self, usern, filters):
         if usern in self.subbed.keys():
-            msg=self.subbed[usern].messages
-            self.subbed[usern].messages = []
-            return (True, msg)
+            msgs = subbed[user].getMsgs(filters)
+            self.subbed[usern].messages.clear()
+            return (True, msgs)
         else:
             return (False, f"User {usern} not subbed")
 
         
-    def addConn(self, name):
+    def addConn(self, name, filters):
         """
         Agrega usuario connectado 
         
         name -- name del usuario a crear
         """
         if name in self.conns: # return error 
-            return False, [f"{name} was already connected to channel {self.name}"]
+            return False, [f"{name} was already connected 
+                        to channel {self.name}"]
 
         else:
             usr_msgs = []
-            
+            usr = None
+
             if name in self.subbed:
                 # copiar mensajes y enviarlos
                 usr = self.subbed[name]
-                usr_msgs = deepcopy(usr.messages)
+                usr_msgs = usr.getMsgs(filters)
                 usr.messages.clear()
                 
-                self.conns[name] = usr
-                del self.subbed[name]
-            
+                del self.subbed[name]            
+            else:
+                usr = User(name)
+                usr.setFilters(filters)
+                
+            self.conns[name] = usr
             return True, usr_msgs
 
     def getConn(self,name):

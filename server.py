@@ -7,6 +7,7 @@ class ClientConn:
     def __init__(self, client, usern):
         self.client = client
         self.usern = usern
+        
 
 
 class Server: 
@@ -93,6 +94,24 @@ class Server:
         return succ, resp
     
 
+    def parse_chanreq(self, payload):
+        print(payload)
+        try:
+            raw_data = payload.split(' ')
+            channel_name = raw_data[0]
+            tags = raw_data[2:2 + int(raw_data[1])]
+            for word in raw_data[2 + int(raw_data[1]):]:
+                msg += word + ' '
+            msg = msg[:-1]
+            return [channel_name, tags, msg]
+ 
+        except:
+            return  [None, None, None]
+
+ 
+
+
+
     def create_channel(self, payload, usern):
         if payload in self.channels:
             return False, f"Channel {payload} already exists"
@@ -144,11 +163,15 @@ class Server:
     
 
     def connect_channel(self, payload, client_conn):
-        channel = self.channels.get(payload)
+        channel_name, tags, msg = parse_chanreq(payload)
+        if channel_name == None:
+            return False, "Error parsing message"
+
+        channel = self.channels.get(channel_name)
         succ, resp = True, ""
 
         if channel != None: 
-            msgs_succ, msgs_tosend = channel.addConn(client_conn.usern)
+            msgs_succ, msgs_tosend = channel.addConn(client_conn.usern, tags)
             if msgs_succ:
                 for nxt_msg in msgs_tosend:
                     nxt_msg = channel.name + " " + nxt_msg
@@ -185,21 +208,13 @@ class Server:
 
     
     def recieve_msg(self, payload):
-        succ, resp = True, ""
-        msg = ""
-        channel_name = ""
-        try:
-            print(payload)
-            startind = payload.find(" ")
-            channel_name = payload[:startind]
-            msg = payload[startind:]
-        except:
-            errmsg = "Error parsing message"
-            return False, errmsg
+        channel_name, tags, msg = parse_chanreq(payload)
+        if channel_name == None:
+            return False, "Error parsing message"
 
         channel = self.channels.get(channel_name)
         if channel != None: 
-            conn_users = channel.storeMsg(msg)
+            conn_users = channel.storeMsg(msg, tags)
             msg = channel_name + " " + msg
             for usern in conn_users:
                 tmp_client_conn = self.conn_users.get(usern)
