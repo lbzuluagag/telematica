@@ -32,7 +32,10 @@ class Server:
     def send_msg(self, verb, msg, conn):
         verb = verb.strip()
         msg = verb+str(msg)
-        conn.send(msg.encode(self.FORMAT))
+        try:
+            conn.send(msg.encode(self.FORMAT))
+        except e:
+            print("error sending msg:", e)
     #---------------------------------------------------------------
     
     def auth_user(self, payload, client):
@@ -90,33 +93,39 @@ class Server:
         return succ, resp
     
 
-    def create_channel(self, payload):
+    def create_channel(self, payload, usern):
         if payload in self.channels:
             return False, f"Channel {payload} already exists"
         else:
-            self.channels[payload] = Channel(payload)
+            self.channels[payload] = Channel(payload, usern)
             return True, f"Channel {payload} created succesfully"   
 
     
-    def create_queue(self, payload):
+    def create_queue(self, payload, usern):
         if payload in self.queues:
             return False, f"Queue {payload} already exists"
         else:
-            self.queues[payload] = Queue(payload)
+            self.queues[payload] = Queue(payload, usern)
             return True, f"Queue {payload} created succesfully"
 
     
-    def channel_delete(self, payload):
-        if payload not in self.channels:
+    def channel_delete(self, payload, usern):
+        channel = self.channels.get(payload)
+        if channel == None:
             return False, f"Channel {payload} does not exist"
+        elif channel.creator != usern:
+            return False, f"{usern} is not the creator of {payload}"
         else:
             del self.channels[payload]
             return True, f"Channel {payload} deleted succesfully"
 
 
-    def queue_delete(self, payload):
-        if payload not in self.queues:
+    def queue_delete(self, payload, usern):
+        queue = self.queues.get(payload)
+        if queue == None:
             return False, f"Queue {payload} does not exist"
+        elif queue.creator != usern:
+            return False, f"{usern} is not the creator of {payload}"
         else:
             del self.queues[payload]
             return True, f"Queue {payload} deleted succesfully"
@@ -134,13 +143,21 @@ class Server:
         return succ, resp
     
 
-    def connect_channel(self, payload, usern):
+    def connect_channel(self, payload, client_conn):
         channel = self.channels.get(payload)
-        succ = True
-        resp = ""
+        succ, resp = True, ""
+
         if channel != None: 
-            succ, resp = channel.addConn(usern)
-            print(channel.conns)
+            msgs_succ, msgs_tosend = channel.addConn(client_conn.usern)
+            if msgs_succ:
+                for nxt_msg in msgs_tosend:
+                    nxt_msg = channel.name + " " + nxt_msg
+                    self.send_msg("MSG", nxt_msg, client_conn.client)
+                    
+                succ, resp = (True, f"Succesfully connected to channel {channel.name}")
+            else:
+                succ, resp = (False, f"Already connected to channel {channel.name}")
+                print(channel.conns)
         else:
             succ, resp = (False, f"Channel {payload} does not exist")
 
@@ -149,11 +166,18 @@ class Server:
 
     def connect_queue(self, payload, usern):
         queue = self.queues.get(payload)
-        succ = True
-        resp = ""
+        succ, resp = True, ""
+    
         if queue != None:
             succ, resp = queue.addConn(usern)
-            print(queue.conns)
+            user_tosend, msg_tosend = queue.getMsg()
+            while user_tosend != None:
+                tmp_client_conn = self.conn_users.get(user_tosend)
+                msg_tosend = queue.name + " " + msg_tosend
+                self.send_msg("MSG", msg_tosend, tmp_client_conn)
+                user_tosend, msg_tosend  = queue.getMsg()
+            
+            succ, resp = (True, f"Connected succesfully queue {queue.name}")
         else:
             succ, resp = (False, f"Queue {payload} does not exist")
         
@@ -161,9 +185,9 @@ class Server:
 
     
     def recieve_msg(self, payload):
-        succ = True
-        resp = ""
+        succ, resp = True, ""
         msg = ""
+        channel_name = ""
         try:
             print(payload)
             startind = payload.find(" ")
@@ -187,6 +211,37 @@ class Server:
 
         return succ, resp
 
+    def recieve_msgQ(self, payload):
+        succ, resp = True, ""
+        msg = ""
+        queue_name = ""
+        try:
+            print(payload)
+            startind = payload.find(" ")
+            queue_name = payload[:startind]
+            msg = payload[startind:]
+        except:
+            errmsg = "Error parsing message"
+            return False, errmsg
+
+        queue = self.queues.get(queue_name)
+        print("-------",queue)
+        if queue != None: 
+            queue.storeMsg(msg)
+            if len(queue.conns) > 0:
+                user_tosend, msg_tosend = queue.getMsg()
+                print(user_tosend, msg_tosend)
+                msg_tosend = queue.name + " " + msg_tosend
+                tmp_client_conn = self.conn_users.get(user_tosend)
+
+                self.send_msg("MSG", msg_tosend, tmp_client_conn)    
+            
+            succ, resp = True, f"{queue.name} recieved message"
+        else: 
+            succ, resp = (False, f"Queue {queue.name} does not exist")
+         
+
+        return succ, resp
 
     def send_msglist(self, payload, client_conn):
         channel = self.channels.get(payload)
@@ -207,6 +262,14 @@ class Server:
         
         return succ, resp
 
+
+    def del_client(self, client):
+        print("error recieving from client")
+        client_conn = self.clients.get(client)
+        if client_conn != None:
+            del self.conn_users[client_conn.usern]   
+            del self.clients[client]
+
     
     def request_handler(self, verb, payload, client):
         succ, resp = False, ""
@@ -221,16 +284,17 @@ class Server:
             else:
                 usern = client_conn.usern
                 request_fns = {
-                       "CCR": lambda: self.create_channel(payload),
-                       "QCR": lambda: self.create_queue(payload),
-                       "CDE": lambda: self.channel_delete(payload),
-                       "QDE": lambda: self.queue_delete(payload),
+                       "CCR": lambda: self.create_channel(payload, usern),
+                       "QCR": lambda: self.create_queue(payload, usern),
+                       "CDE": lambda: self.channel_delete(payload, usern),
+                       "QDE": lambda: self.queue_delete(payload, usern),
                        "CLI": lambda: (True, list(self.channels.keys())),
                        "QLI": lambda: (True, list(self.queues.keys())),
                        "CSU": lambda: self.subscribe_channel(payload, usern),
-                       "CCO": lambda: self.connect_channel(payload, usern),
+                       "CCO": lambda: self.connect_channel(payload, client_conn),
                        "QCO": lambda: self.connect_queue(payload, usern),
                        "CRE": lambda: self.recieve_msg(payload),
+                       "QRE": lambda: self.recieve_msgQ(payload),
                        "CSE": lambda: self.send_msglist(payload, client_conn)
                 }
         
@@ -238,7 +302,7 @@ class Server:
                 if func != None:
                     succ, resp = func()
                 else:
-                    succ, resp = False, "{verb} is not a valid verb"
+                    succ, resp = False, f"{verb} is not a valid verb"
         
         if succ:
             self.send_msg("OKO", resp, client)
@@ -252,16 +316,18 @@ class Server:
         while True:      
             raw_msg = None
             try:
-                raw_msg=client.recv(self.HEADER).decode(self.FORMAT)
+                raw_msg = client.recv(self.HEADER).decode(self.FORMAT)
             except: 
-                print("error recieving from client")
-                client_conn = self.clients.get(client)
-                if client_conn != None:
-                    del self.conn_users[client_conn.usern]   
-                    del self.clients[client]
-        
+                self.del_client(client)
+                return
+
             payload=raw_msg[3:]
             request_verb = raw_msg[:3].upper()
+
+            if(request_verb == "DEL"):
+                self.del_client(client)
+                return
+
             self.request_handler(request_verb, payload, client)                
 
 

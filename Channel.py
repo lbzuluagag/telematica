@@ -8,9 +8,17 @@ class User:
         """
         name -- name del usuario
         """
-        self.name=name
-        self.messages=[]
+        self.name = name
+        self.messages = [] #stores str,set pair
 
+
+    def getMsgs(self, filters):
+        msgs = []
+        for msg, tags in self.messages:
+            for f in filters:
+                if f in tags:
+                    msgs.append(msg)
+                    break
 
     def getName(self):
         """
@@ -30,14 +38,13 @@ class User:
             return "No messages left"
         
 
-    def pushMessage(self,message):
+    def pushMsgs(self, message, tags):
         """
         Agrega un message a la lista de messages
 
         message -- Message para agregar en la lista
         """
-        self.messages.append(message)
-
+        self.messages.append((message, tags))
 
 
 
@@ -48,10 +55,11 @@ class Channel:
 
     name -- name del canal a crear
     """
-    def __init__(self,name):
+    def __init__(self,name,creator):
         """
         name -- name del canal
         """
+        self.creator=creator
         self.name=name
         self.conns = {}  # key: name (str) val: userobj
         self.subbed = {} # key: name (str) val: userobj
@@ -86,9 +94,9 @@ class Channel:
             return True, f"{name} subbed to channel {self.name}"
 
 
-    def storeMsg(self, msg):
+    def storeMsg(self, msg, tags):
         for sub in self.subbed.values():
-            sub.messages.append(msg)
+            sub.push
 
         return self.conns.keys()
 
@@ -109,22 +117,21 @@ class Channel:
         name -- name del usuario a crear
         """
         if name in self.conns: # return error 
-            return 0, [f"{name} was already connected to channel {self.name}"]
-
-        elif name in self.subbed:
-            # copiar mensajes y enviarlos
-            usr = self.subbed[name]
-            usr_msgs = deepcopy(usr.messages)
-            usr.messages.clear()
-            
-            self.conns[name] = usr
-            del self.subbed[name]
-
-            return 1, usr_msgs
+            return False, [f"{name} was already connected to channel {self.name}"]
 
         else:
-            self.conns[name] = User(name)
-            return 2, [f"{name} connected succesfully to {self.name}"]
+            usr_msgs = []
+            
+            if name in self.subbed:
+                # copiar mensajes y enviarlos
+                usr = self.subbed[name]
+                usr_msgs = deepcopy(usr.messages)
+                usr.messages.clear()
+                
+                self.conns[name] = usr
+                del self.subbed[name]
+            
+            return True, usr_msgs
 
     def getConn(self,name):
         if name in self.conns:
@@ -139,10 +146,11 @@ class Queue:
 
     name -- name del canal a crear
     """
-    def __init__(self,name):
+    def __init__(self, name, creator):
         """
         name -- name del canal
         """
+        self.creator=creator
         self.name=name
         self.conns = set()  # key: name (str) 
         self.messages=[]
@@ -168,15 +176,13 @@ class Queue:
 
 
     def getMsg(self):
-        if len(self.messages)>0:
+        if len(self.messages) > 0 and len(self.conns) > 0:
+            self.index = (self.index + 1) % len(self.conns)
             user = list(self.conns)[self.index]
-            self.index= self.index+1
-            if self.index >= len(self.conns):
-                self.index = 0 
-            msg = self.messages.pop()
-            return True, msg , user
+            msg = self.messages.pop() 
+            return user, msg
         else:
-            return False, "No messages available"
+            return None, "No messages available or no users"
 
         
     def addConn(self, name):
@@ -186,11 +192,10 @@ class Queue:
         name -- name del usuario a crear
         """
         if name in self.conns: # return error 
-            return 0, [f"{name} was already connected to Queue {self.name}"]
-
+            return False, [f"{name} was already connected to Queue {self.name}"]
         else: 
             self.conns.add(name)
-            return 2, [f"{name} connected succesfully to {self.name}"]
+            return True, [f"{name} connected succesfully to {self.name}"]
 
 
     def getConn(self,name):
