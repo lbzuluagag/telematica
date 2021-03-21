@@ -33,13 +33,15 @@ class Server:
         self.queues = {} # k: str, v: Queue
 
     def send_msg(self, verb, msg, conn):
+        print(verb, msg)
         verb = verb.strip()
         msg = verb+str(msg)
         try:
             conn.send(msg.encode(self.FORMAT))
         except Exception as e:
             print("error sending msg:", e)
-    #---------------------------------------------------------------
+    
+        #---------------------------------------------------------------
     
     def auth_user(self, payload, client):
         usern = None
@@ -291,7 +293,8 @@ class Server:
         if client_conn != None:
             del self.conn_users[client_conn.usern]   
             del self.clients[client]
-
+        client.close()
+        print("client deleted")
     
     def request_handler(self, verb, payload, client):
         succ, resp = False, ""
@@ -337,12 +340,18 @@ class Server:
         print("--------------")
         while True:      
             raw_msg = None
+            failed_conn = False
             try:
                 raw_msg = client.recv(self.HEADER).decode(self.FORMAT)
+                failed_conn = len(raw_msg) == 0
             except: 
+                failed_conn =  True
+            
+            if failed_conn:
                 self.del_client(client)
                 return
-
+            
+            print(len(raw_msg))
             payload=raw_msg[3:]
             request_verb = raw_msg[:3].upper()
 
