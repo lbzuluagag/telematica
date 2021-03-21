@@ -2,7 +2,8 @@ import socket
 import threading
 from Channel import Channel, Queue
 import json
-
+import ssl
+import itertools
 class ClientConn:
     def __init__(self, client, usern):
         self.client = client
@@ -22,6 +23,7 @@ class Server:
         self.FORMAT = 'utf-8'
 
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind(self.ADDR)
 
         # ----------------------------------------------------------
@@ -357,8 +359,11 @@ class Server:
         print(f"[LISTENING] Server is listening on {self.SERVER}")
         while True:
             conn, addr = self.server.accept()
+            secureClientSocket = ssl.wrap_socket(conn, server_side=True, ca_certs="client.pem", certfile="server.pem", keyfile="server.key", cert_reqs=ssl.CERT_REQUIRED, ssl_version=ssl.PROTOCOL_TLSv1_2)
+            client_cert  = secureClientSocket.getpeercert()
+
             print(f"Connected with {str(addr)}")
-            thread = threading.Thread(target=self.mom, args=(conn, addr))
+            thread = threading.Thread(target=self.mom, args=(secureClientSocket, addr))
             thread.start()
             print(f"[ACTIVE CONNECTIONS] {threading.active_count }")
 

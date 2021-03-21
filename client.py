@@ -1,7 +1,8 @@
 import socket
 import threading
-
-
+import ssl
+import pprint
+import itertools
 HEADER = 1024
 PORT = 5051
 FORMAT = 'utf-8'
@@ -9,14 +10,24 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER,PORT)
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(ADDR)
+#client.connect(ADDR)
 
+context = ssl.SSLContext()
+context.verify_mode = ssl.CERT_REQUIRED
+context.load_verify_locations("server.pem")
+context.load_cert_chain(certfile="client.pem", keyfile="client.key")
+
+secure_sock= context.wrap_socket(client)
+secure_sock.connect(ADDR)
+
+
+# verify server
 
 def receive():
     while True:
         try:
             #recibe un mensaje del servidor
-            msg = client.recv(HEADER).decode(FORMAT)
+            msg = secure_sock.recv(HEADER).decode(FORMAT)
             print(msg)
         except:
             print("An error ocurred!")
@@ -28,7 +39,7 @@ def receive():
 def write():
     while True:
         msg = f"{input()}"
-        client.send(msg.encode(FORMAT))
+        secure_sock.send(msg.encode(FORMAT))
 
 #iniciamos los hilos
 #este primer hilo es para que este pendiente del metodo receive
