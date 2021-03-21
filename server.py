@@ -35,7 +35,7 @@ class Server:
         msg = verb+str(msg)
         try:
             conn.send(msg.encode(self.FORMAT))
-        except e:
+        except Exception as e:
             print("error sending msg:", e)
     #---------------------------------------------------------------
     
@@ -86,7 +86,7 @@ class Server:
                     errmsg=f"user not registred"
                     print(errmsg)
                     succ, resp = (False, errmsg)
-            except e:
+            except Exception as e:
                     errmsg=f"Something went wrong"
                     print(errmsg, e)
                     succ, resp = (False, errmsg)
@@ -100,18 +100,18 @@ class Server:
             raw_data = payload.split(' ')
             channel_name = raw_data[0]
             tags = raw_data[2:2 + int(raw_data[1])]
+            
+            msg = ""
             for word in raw_data[2 + int(raw_data[1]):]:
                 msg += word + ' '
             msg = msg[:-1]
             return [channel_name, tags, msg]
  
-        except:
+        except Exception as e:
+            print("parsing error", e)
             return  [None, None, None]
 
  
-
-
-
     def create_channel(self, payload, usern):
         if payload in self.channels:
             return False, f"Channel {payload} already exists"
@@ -163,7 +163,7 @@ class Server:
     
 
     def connect_channel(self, payload, client_conn):
-        channel_name, tags, msg = parse_chanreq(payload)
+        channel_name, tags, _ = self.parse_chanreq(payload)
         if channel_name == None:
             return False, "Error parsing message"
 
@@ -171,12 +171,12 @@ class Server:
         succ, resp = True, ""
 
         if channel != None: 
-            msgs_succ, msgs_tosend = channel.addConn(client_conn.usern, tags)
-            if msgs_succ:
+            msgs_tosend = channel.addConn(client_conn.usern, tags)
+            if msgs_tosend != None:
                 for nxt_msg in msgs_tosend:
                     nxt_msg = channel.name + " " + nxt_msg
                     self.send_msg("MSG", nxt_msg, client_conn.client)
-                    
+        
                 succ, resp = (True, f"Succesfully connected to channel {channel.name}")
             else:
                 succ, resp = (False, f"Already connected to channel {channel.name}")
@@ -208,7 +208,7 @@ class Server:
 
     
     def recieve_msg(self, payload):
-        channel_name, tags, msg = parse_chanreq(payload)
+        channel_name, tags, msg = self.parse_chanreq(payload)
         if channel_name == None:
             return False, "Error parsing message"
 
@@ -259,10 +259,15 @@ class Server:
         return succ, resp
 
     def send_msglist(self, payload, client_conn):
-        channel = self.channels.get(payload)
+        channel_name, tags, _ = self.parse_chanreq(payload)
+        if channel_name == None:
+            return False, "Error parsing message"
+
+        channel = self.channels.get(channel_name)
         succ, resp = False, ""
         if channel != None:
-            msgs_succ, msgs_tosend = channel.getSubbdMsg(client_conn.usern)
+            msgs_succ, msgs_tosend = channel.getStoredMsgs(
+                                            client_conn.usern, tags)
             if msgs_succ:
                 for nxt_msg in msgs_tosend:
                     nxt_msg = channel.name + " " + nxt_msg

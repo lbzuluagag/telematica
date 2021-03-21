@@ -21,11 +21,15 @@ class User:
 
     def getMsgs(self):
         msgs = []
+        if len(self.filters) == 0:
+            return msgs
+
         for msg, tags in self.messages:
             for f in self.filters:
                 if f in tags:
                     msgs.append(msg)
                     break
+        self.messages.clear()
         return msgs
 
 
@@ -87,15 +91,28 @@ class Channel:
 
     def storeMsg(self, msg, tags):
         for sub in self.subbed.values():
+            # push messages into user regardless
+            # of what tags they mightve set
+            # since they may request different tags
             sub.pushMsg(msg, tags)
-            
-        return self.conns.keys()
+        
+        valid_conns = []
+        for usern, user in self.conns.items():
+            for t in tags:
+                if t in user.filters:
+                    valid_conns.append(usern)
+                    break
+        
+        return valid_conns
 
 
-    def getSubbdMsg(self, usern, filters):
+    def getStoredMsgs(self, usern, filters):
         if usern in self.subbed.keys():
-            msgs = subbed[user].getMsgs(filters)
-            self.subbed[usern].messages.clear()
+            usr = self.subbed[usern]
+            # reset filters everytime 
+            # for subbed users
+            usr.setFilters(filters)
+            msgs = self.subbed[usern].getMsgs()
             return (True, msgs)
         else:
             return (False, f"User {usern} not subbed")
@@ -108,26 +125,22 @@ class Channel:
         name -- name del usuario a crear
         """
         if name in self.conns: # return error 
-            return False, [f"{name} was already connected 
-                        to channel {self.name}"]
-
+            return None
         else:
             usr_msgs = []
             usr = None
 
-            if name in self.subbed:
+            if name in self.subbed: # user subbed
                 # copiar mensajes y enviarlos
                 usr = self.subbed[name]
-                usr_msgs = usr.getMsgs(filters)
-                usr.messages.clear()
-                
                 del self.subbed[name]            
-            else:
-                usr = User(name)
-                usr.setFilters(filters)
-                
+            else: #new user
+                usr = User(name)   
+            
+            usr.setFilters(filters)
+            usr_msgs = usr.getMsgs()
             self.conns[name] = usr
-            return True, usr_msgs
+            return usr_msgs
 
     def getConn(self,name):
         if name in self.conns:
