@@ -4,16 +4,18 @@ import ssl
 import pprint
 import itertools
 
+SERVER_ADDR = '52.1.123.152'
+#SERVER_ADDR = socket.gethostname()
 
 class MomClient:
     def __init__(self, blocking=True):
 
         self.HEADER = 1024
         self.FORMAT = 'utf-8'
-
+        self.blocking =  blocking
         PORT = 5051
 
-        SERVER = socket.gethostbyname(socket.gethostname())
+        SERVER = socket.gethostbyname(SERVER_ADDR)
         ADDR = (SERVER, PORT)
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -36,6 +38,7 @@ class MomClient:
             raw_msg = self.secure_sock.recv(self.HEADER).decode(self.FORMAT)
             conn_error = len(raw_msg) < 3 
         except:
+            conn_error = self.blocking
             return None, None
             
         if conn_error:

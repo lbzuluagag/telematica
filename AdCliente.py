@@ -7,7 +7,7 @@ inf_recvd = Lock()
 inf_read = True
 
 def read_msgs():    
-    global inf_read, inf_recvd;
+    global inf_read, inf_recvd
     inf_terms = ["All channels listed", "No channels created"]
 
     # does this thread have the lock
@@ -41,7 +41,7 @@ def read_msgs():
 
 
 def list_channels():   
-    global inf_read, inf_recvd;
+    global inf_read, inf_recvd
     momc.channel_list() 
     
     inf_recvd.acquire() #wait for INFS to be over

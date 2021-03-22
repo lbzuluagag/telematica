@@ -99,10 +99,13 @@ class Channel:
         
         valid_conns = []
         for usern, user in self.conns.items():
-            for t in tags:
-                if t in user.filters or len(user.filters) == 0:
-                    valid_conns.append(usern)
-                    break
+            if len(user.filters) == 0:
+                valid_conns.append(usern)
+            else:
+                for t in tags:
+                    if t in user.filters:
+                        valid_conns.append(usern)
+                        break
         
         return valid_conns
 
