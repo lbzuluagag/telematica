@@ -25,7 +25,7 @@ def read_msgs():
         resp, cont = momc.get_nxtmsg() 
 
         
-        # print(resp, cont)
+        print(resp, cont)
         
         if resp == "INF":
             inf_msgs.append(cont)
