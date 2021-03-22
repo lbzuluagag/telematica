@@ -60,6 +60,20 @@ def send_mesage():
     return [resp, cont]
     
 
+def disconnect_channel():
+    resp_arr = list_channels()
+    if resp_arr[0] == "ERR":
+        return resp_arr[:2]
+
+    channels = resp_arr[2]
+    ch_ind = int(input("Cual canal? "))
+
+    momc.channel_disconnect(channels[ch_ind - 1])
+    resp, cont = momc.get_nxtmsg()
+
+    return [resp, cont]
+
+
 
 def main():
     user = input("Usuario: ")
@@ -77,7 +91,8 @@ def main():
             "1. Crear canal",
             "2. Borrar canal",
             "3. Listar canales",
-            "4. Enviar Mensaje a Canal"
+            "4. Enviar Mensaje a Canal",
+            "5. Desconectarse de canal",
         ]
 
         for o in options:
@@ -90,7 +105,8 @@ def main():
             create_channel,
             delete_channel,
             list_channels,
-            send_mesage
+            send_mesage,
+            disconnect_channel
         ]
         
         resp_arr = funcs[selected - 1]()

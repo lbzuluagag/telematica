@@ -105,8 +105,17 @@ def recieve_msgs():
 
     
     momc.channel_send(channels[ch_ind - 1], tags)
-    
-    
+
+
+def disconnect_channel():
+    channels = list_channels()
+    if len(channels) == 0:
+        print("Por favor cree un canal")
+    else: 
+        ch_ind = int(input("Cual Canal? "))
+        momc.channel_disconnect(channels[ch_ind - 1])
+
+
 
 def main():
     user = input("Usuario: ")
@@ -128,7 +137,9 @@ def main():
             "1. Conectarse a un canal",
             "2. Subscribirse a un canal",
             "3. Listar canales",
-            "4. Obtener mensajes de canal"
+            "4. Obtener mensajes de canal",
+            "5. Desconectarse de canal"
+            
         ]
 
         for o in options:
@@ -141,7 +152,8 @@ def main():
             connect_2channel,
             subscribe_2channel,
             list_channels,
-            recieve_msgs
+            recieve_msgs,
+            disconnect_channel
         ]
         
         funcs[selected - 1]()
