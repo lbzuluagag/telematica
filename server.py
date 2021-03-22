@@ -321,7 +321,7 @@ class Server:
         return succ, resp
 
 
-    def queue_disconnect(self, queue_name, usern)
+    def queue_disconnect(self, queue_name, usern):
         queue = self.queues.get(usern)
         succ, resp =  True, ""
         if queue != None:
