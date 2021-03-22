@@ -13,7 +13,7 @@ class MomClient:
         self.HEADER = 1024
         self.FORMAT = 'utf-8'
         self.blocking =  blocking
-        PORT = 5051
+        PORT = 5050
 
         SERVER = socket.gethostbyname(SERVER_ADDR)
         ADDR = (SERVER, PORT)
@@ -93,6 +93,9 @@ class MomClient:
             msg += ' ' + f
         self._send_msg("CSE", msg)
     
+    def channel_disconnect(self, channel_name):
+        self._send_msg("CDI", channel_name)
+
     def queue_create(self, queue_name):
         self._send_msg("QCR", queue_name)
 
@@ -107,6 +110,10 @@ class MomClient:
 
     def queue_recieve(self, queue_name, msg):
         self._send_msg("QRE", queue_name + ' ' + msg)
+
+    def queue_disconnect(self, queue_name):
+        self._send_msg("QDI", queue_name)
+
 
     def disconnect(self):
         self._send_msg("DEL", '')

@@ -309,6 +309,28 @@ class Server:
             succ, resp = (False, f"Channel {payload} does not exist")
         
         return succ, resp
+    
+    def channel_disconnect(self, channel_name, usern):
+        channel = self.channels.get(channel_name)
+        succ, resp =  True, ""
+        if channel != None:
+            succ, resp = channel.delUser(usern)
+        else:
+            succ, resp = "Channel {channel_name} does not exist"
+
+        return succ, resp
+
+
+    def queue_disconnect(self, queue_name, usern)
+        queue = self.queues.get(usern)
+        succ, resp =  True, ""
+        if queue != None:
+            succ, resp = queues.delUser(usern)
+        else:
+            succ, resp = "Queue {queue_name} does not exist"
+
+        return succ, resp
+
 
 
     def del_client(self, client):
@@ -320,6 +342,7 @@ class Server:
         client.close()
         print("client deleted")
     
+
     def request_handler(self, verb, payload, client):
         succ, resp = False, ""
 
@@ -344,7 +367,9 @@ class Server:
                        "QCO": lambda: self.connect_queue(payload, usern),
                        "CRE": lambda: self.recieve_msg(payload),
                        "QRE": lambda: self.recieve_msgQ(payload),
-                       "CSE": lambda: self.send_msglist(payload, client_conn)
+                       "CSE": lambda: self.send_msglist(payload, client_conn),
+                       "CDI": lambda: self.channel_disconnect(payload, usern),
+                       "QDI": lambda: self.queue_disconnect(payload, usern)
                 }
         
                 func = request_fns.get(verb);     

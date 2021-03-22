@@ -146,11 +146,19 @@ class Channel:
             self.conns[name] = usr
             return usr_msgs
 
-    def getConn(self,name):
-        if name in self.conns:
-            return True
-        else:
-            return False
+    def delUser(self, usern):
+        if usern in self.conns:
+            del self.conns[usern]
+            return True, "Connection to {self.name} deleted"
+        
+        if userobj in self.subbed:
+            del self.subbed[usern]
+            return True, "Subscription to {self.name} deleted"
+        
+        return False, "User not in channel {self.name}"
+        
+
+
 
 class Queue:
     """
@@ -211,12 +219,13 @@ class Queue:
             return True, [f"{name} connected succesfully to {self.name}"]
 
 
-    def getConn(self,name):
-        if name in self.conns:
-            return True
-        else:
-            return False
+    def delUser(self, usern):
+        if usern in self.conns:
+            del self.conns[usern]
+            return True, "Delete user from queue {self.name}"
 
+        return False, "{usern} not in queue {self.name}"
+    
 #cola = Queue("eafit")
 #print(cola)
 #cola.addConn("luis")

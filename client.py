@@ -4,10 +4,16 @@ import ssl
 import pprint
 import itertools
 HEADER = 1024
-PORT = 5051
+PORT = 5050
+SERVER_ADDR = '52.1.123.152'
+#SERVER_ADDR = socket.gethostname()
+
+
+
+
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
-SERVER = socket.gethostbyname(socket.gethostname())
+SERVER = socket.gethostbyname(SERVER_ADDR)
 ADDR = (SERVER,PORT)
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #client.connect(ADDR)
