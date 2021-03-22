@@ -152,12 +152,35 @@ class Server:
         else:
             del self.queues[payload]
             return True, f"Queue {payload} deleted succesfully"
-    
+
+
+    def channel_list(self, client_conn):
+        succ, resp = True, ""
+        if len(self.channels) > 0:
+            for ch in self.channels.keys():
+                self.send_msg("INF", ch, client_conn.client)
+            succ, resp = True, "All channels listed"
+        else:
+            succ, resp = False, "No channels created"
+        
+        return succ, resp
+
+
+    def queue_list(self, client_conn):
+        succ, resp = True, ""
+        if len(self.queues) > 0:
+            for qu in self.queues.keys():
+                self.send_msg("INF", qu, client_conn.client)
+            succ, resp = True, "All queues listed"
+        else:
+            succ, resp = False, "No queues created"
+
+        return succ, resp
+
 
     def subscribe_channel(self, payload, usern):
         channel = self.channels.get(payload)
-        succ = True
-        resp = ""
+        succ, resp = True, ""
         if channel != None: 
             succ, resp = channel.addSub(usern)
         else:
@@ -220,6 +243,7 @@ class Server:
         if channel != None: 
             conn_users = channel.storeMsg(msg, tags)
             msg = channel_name + " " + msg
+            print(f"send to {len(conn_users)} users")
             for usern in conn_users:
                 tmp_client_conn = self.conn_users.get(usern)
                 self.send_msg("MSG", msg, tmp_client_conn) 
@@ -313,8 +337,8 @@ class Server:
                        "QCR": lambda: self.create_queue(payload, usern),
                        "CDE": lambda: self.channel_delete(payload, usern),
                        "QDE": lambda: self.queue_delete(payload, usern),
-                       "CLI": lambda: (True, list(self.channels.keys())),
-                       "QLI": lambda: (True, list(self.queues.keys())),
+                       "CLI": lambda: self.channel_list(client_conn),
+                       "QLI": lambda: self.channel_list(client_conn),
                        "CSU": lambda: self.subscribe_channel(payload, usern),
                        "CCO": lambda: self.connect_channel(payload, client_conn),
                        "QCO": lambda: self.connect_queue(payload, usern),

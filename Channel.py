@@ -22,13 +22,14 @@ class User:
     def getMsgs(self):
         msgs = []
         if len(self.filters) == 0:
-            return msgs
+            msgs = deepcopy(self.messages)
+        else:
+            for msg, tags in self.messages:
+                for f in self.filters:
+                    if f in tags:
+                        msgs.append(msg)
+                        break
 
-        for msg, tags in self.messages:
-            for f in self.filters:
-                if f in tags:
-                    msgs.append(msg)
-                    break
         self.messages.clear()
         return msgs
 
@@ -99,7 +100,7 @@ class Channel:
         valid_conns = []
         for usern, user in self.conns.items():
             for t in tags:
-                if t in user.filters:
+                if t in user.filters or len(user.filters) == 0:
                     valid_conns.append(usern)
                     break
         
