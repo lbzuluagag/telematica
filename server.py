@@ -16,7 +16,7 @@ class Server:
         # NETWORKING SETUP-------------------------------------------
         #msg length in bytes
         self.HEADER = 1024
-        self.PORT = 5051
+        self.PORT = 5050
         #get IP
         self.SERVER = socket.gethostbyname(socket.gethostname())
         self.ADDR = (self.SERVER, self.PORT)
