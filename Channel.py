@@ -22,7 +22,7 @@ class User:
     def getMsgs(self):
         msgs = []
         if len(self.filters) == 0:
-            msgs = deepcopy(self.messages)
+            msgs = [msg for msg, _ in self.messages]
         else:
             for msg, tags in self.messages:
                 for f in self.filters:
